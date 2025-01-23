@@ -12,20 +12,19 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ApplicationContext {
-
-    private ConcurrentHashMap<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
-    private ConcurrentHashMap<String, Object> singletonMap = new ConcurrentHashMap<>();
-    private List<BeanPostProcessor> beanPostProcessors = new ArrayList<>();
+    private final ConcurrentHashMap<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Object> singletonMap = new ConcurrentHashMap<>();
+    private final List<BeanPostProcessor> beanPostProcessors = new ArrayList<>();
 
     public ApplicationContext(Class<?> configClass) {
+        String composeScanPackage = "com.qihui.sun.service";
         if (configClass.isAnnotationPresent(ComponentScan.class)) {
             ComponentScan annotation = configClass.getAnnotation(ComponentScan.class);
             // com.qihui.sun.service
-            String scanPackage = annotation.value();
-            //通过scanPackage获取类路径目录
-
-            initDefinitionMap(scanPackage);
+            composeScanPackage = annotation.value();
         }
+        //通过scanPackage获取类路径目录
+        initDefinitionMap(composeScanPackage);
 
         // 初始化单例池
         beanDefinitionMap.forEach((beanName, beanDefinition) -> {
@@ -47,9 +46,9 @@ public class ApplicationContext {
             Arrays.stream(Objects.requireNonNull(classDirectory.listFiles()))
                     .forEach(file -> {
                         // D:\dev\code\my-spring\out\production\my-spring\com\qihui\sun\service\User.class
-                        String absoluteFile = file.getAbsolutePath();
-                        // com.qihui.sun.service.User
-                        String className = absoluteFile.substring(absoluteFile.indexOf("com")).replace('\\', '.').replace(".class", "");
+                        String className = file.getAbsolutePath().replace("\\", ".");
+                        // com\qihui\sun\service
+                        className = className.substring(className.indexOf(scanPackage)).replace(".class", "");
                         //根据类名加载类
                         try {
                             Class<?> aClass = classLoader.loadClass(className);
@@ -134,7 +133,7 @@ public class ApplicationContext {
             if ("singleton".equals(beanDefinition.getScope())) {
                 return singletonMap.get(beanName);
             } else {
-                return createBean(beanName,beanDefinition);
+                return createBean(beanName, beanDefinition);
             }
         }
     }
